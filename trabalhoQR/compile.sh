@@ -1,1 +1,2 @@
-g++ -std=c++17 -Wall main.cpp -o main && ./main < input.txt
+g++ -std=c++17 main.cpp -o main
+./main < input.txt

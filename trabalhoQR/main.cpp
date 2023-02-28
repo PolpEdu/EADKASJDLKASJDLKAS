@@ -128,83 +128,38 @@ DEFECT: No QR Code generated!
 
 using namespace std;
 
-int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int qb[], int db[]);
-
 struct QR_Code
 {
     int N;
     int **cells;
 
-    QR_Code(int N) {
+    QR_Code(int N)
+    {
         this->N = N;
-        this->cells = new int*[N];
-        for (int i = 0; i < N; i++) {
+        this->cells = new int *[N];
+        for (int i = 0; i < N; i++)
+        {
             this->cells[i] = new int[N];
         }
     }
-};
 
-// create a binary tree with QR_Code as data. every node has a square on or off (1 or 0)
-struct Node
-{
-    QR_Code code;
-    Node * left;
-    Node * right;
-
-    Node(QR_Code data) {
-        this->code = data;
-        this->left = nullptr;
-        this->right = nullptr;
-    }
-};
-
-struct BinaryTree {
-    Node * root;
-
-    BinaryTree() {
-        this->root = nullptr;
-    }
-
-    void insert(QR_Code data) {
-        Node * node = new Node(data);
-        if (this->root == nullptr) {
-            this->root = node;
-        } else {
-            Node * current = this->root;
-            while (true) {
-                if (data.cells[0][0] == 1) {
-                    if (current->left == nullptr) {
-                        current->left = node;
-                        break;
-                    } else {
-                        current = current->left;
-                    }
-                } else {
-                    if (current->right == nullptr) {
-                        current->right = node;
-                        break;
-                    } else {
-                        current = current->right;
-                    }
-                }
+    void set_all_to_zero()
+    {
+        for (int i = 0; i < N; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                this->cells[i][j] = 0;
             }
         }
     }
-
-    void print() {
-        print(this->root);
-    }
-
-    void print(Node * node) {
-        if (node == nullptr) {
-            return;
-        }
-        print(node->left);
-        print(node->right);
-    }
 };
 
-// insert a new node in the binary tree
+int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int qb[], int db[]);
+int check_cell(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+void printQR_code(QR_Code qr_code);
+bool check_cut(QR_Code qr_code);
 
 int main()
 {
@@ -226,7 +181,7 @@ int main()
         std::cout << "N must be between 2 and 30" << std::endl;
         return 0;
     }
-    
+
     for (int i = 0; i < num; i++)
     {
         // create an int vector of size N
@@ -267,7 +222,6 @@ int main()
         {
             std::cin >> db[i];
         }
-
         start_generating_tree(N, lb, cb, lt, ct, qb, db);
     }
     return 0;
@@ -287,63 +241,107 @@ int main()
     qb saves the amount of black cells per quadrant (qb, quadrant blacks, array of size 4)
     db saves the amount of black cells per diagonal - main and antidiagonal - (db, diagonal blacks, array of size 2)
 
-    I will create a tree that contains every possible generation of qr codes. I will start with a root node that contains an empty qr code, a blank one N by N.
-    the first line of the tree will have just one node, the root node, the blank qr code.
 
     i will treverse the qr_code cell by cell and i will add next to it the possible qr_codes that can be generated from the current qr_code.
 
                                             +--+
-                                            |  | <--- root node, blank qr_code
+                                            |  | <--- blank qr_code
                                             |  |
                                             +--+
                                 +--+                    +--+
                                 |  |                    |# | <--- first cell of the tree, i = 0, j = 0
                                 |  |                    |  |
                                 +--+                    +--+
-                        +--+            +--+        +--+        +--+ 
+                        +--+            +--+        +--+        +--+
                         |  |            | #|        |# |        |##| <--- second cell of the tree, i = 0, j = 1
                         |  |            |  |        |  |        |  |
                         +--+            +--+        +--+        +--+
                     +--+    +--+    +--+    +--+ +--+    +--+ +--+    +--+
                     |  |    |  |    | #|    | #| |# |    |# | |##|    |##| <--- third cell of the tree, i = 1, j = 0
-                    |  |    |# |    |  |    |# | |  |    |# | |  |    |# | 
+                    |  |    |# |    |  |    |# | |  |    |# | |  |    |# |
                     +--+    +--+    +--+    +--+ +--+    +--+ +--+    +--+
                 ...................................4th cell.............................................
-            
-quadrants in the qr_code
-    0   1
-    2   3
 
-if it's odd:
-    2 0 1
-    0 0 0
-    3 0 4
+                quadrants in the qr_code
+                    0   1
+                    2   3
+
+                if it's odd:
+                    2 0 1
+                    0 0 0
+                    3 0 4
 */
 int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
-    //  start generating a tree with all the qr_codes of size N
+    // generate blank qr_code
+    QR_Code qr_code = QR_Code(N);
+    qr_code.set_all_to_zero();
 
-    // create a root node an empty qr code with N lines and N columns
-    QR_Code qr_code_root;
-    qr_code_root.cells = new int *[N];
-    for (int i = 0; i < N; i++)
-    {
-        qr_code_root.cells[i] = new int[N];
-    }
+    loop_through_all_cells(qr_code, 0, 0, lb, cb, lt, ct, qb, db);
+    qr_code.cells[0][0] = 1;
+    loop_through_all_cells(qr_code, 0, 0, lb, cb, lt, ct, qb, db);
 
     return 0;
 }
 
-int printQR_code(QR_Code qr_code)
+bool check_cut(QR_Code qr_code)
+{
+    return false;
+}
+
+void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
+{
+
+    if (l == qr_code.N - 1 && c == qr_code.N - 1)
+    {
+        printQR_code(qr_code);
+        return;
+    }
+
+    if (c == qr_code.N - 1)
+    {
+        l++;
+        c = 0;
+    }
+    else
+    {
+        c++;
+    }
+
+    // if it is valid, we'll add the next possible qr_codes to the tree
+    qr_code.cells[l][c] = 0;
+    loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
+    qr_code.cells[l][c] = 1;
+    loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
+}
+
+void printQR_code(QR_Code qr_code)
 {
     cout << "+";
     for (int i = 0; i < qr_code.N; i++)
     {
         cout << "-";
     }
+
     cout << "+" << endl;
 
     // Print the QR code
+    for (int i = 0; i < qr_code.N; i++)
+    {
+        cout << "|";
+        for (int j = 0; j < qr_code.N; j++)
+        {
+            if (qr_code.cells[i][j] == 0)
+            {
+                cout << " ";
+            }
+            else
+            {
+                cout << "#";
+            }
+        }
+        cout << "|" << endl;
+    }
 
     // Print the bottom border
     cout << "+";

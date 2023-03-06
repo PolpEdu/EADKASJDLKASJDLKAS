@@ -2,6 +2,8 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <chrono>
+#include <math.h>
 
 /*
 Each QR code can be seen as a matrix of binary cells, meaning that each cell can be represented as a black or white pixel/square.
@@ -153,13 +155,13 @@ struct QR_Code
         }
     }
 
-    void set_all_to_zero()
+    void set_all_to(int value)
     {
         for (int i = 0; i < N; i++)
         {
             for (int j = 0; j < N; j++)
             {
-                this->cells[i][j] = 0;
+                this->cells[i][j] = value;
             }
         }
     }
@@ -177,7 +179,7 @@ struct QR_Code
             cout << "|";
             for (int j = 0; j < N; j++)
             {
-                if (this->cells[i][j] == 0)
+                if (this->cells[i][j] % 2 == 0)
                 {
                     cout << " ";
                 }
@@ -203,6 +205,8 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
 int check_cell(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 void printQR_code(QR_Code qr_code);
+bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 
 int main()
 {
@@ -265,7 +269,14 @@ int main()
         {
             std::cin >> db[i];
         }
+        // count time
+        auto start = std::chrono::high_resolution_clock::now();
+
         start_generating_tree(N, lb, cb, lt, ct, qb, db);
+
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        std::cout << "Elapsed time: " << elapsed.count() << " s\n";
     }
     return 0;
 }
@@ -316,12 +327,19 @@ int main()
 */
 int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
+
+    // first detect if the settings are valid
+    if (defect_detection(N, lb, cb, lt, ct, qb, db) == true)
+    {
+        std::cout << "DEFECT: No QR Code generated!" << std::endl;
+        return 0;
+    }
+
     // generate blank qr_code
     QR_Code qr_code = QR_Code(N);
-    qr_code.set_all_to_zero();
+    qr_code.set_all_to(2);
 
-
-    // reset the qr_code.cb to vector of N size to zero 
+    // reset the qr_code.cb to vector of N size to zero
     qr_code.cb = std::vector<int>(N, 0);
     qr_code.lb = std::vector<int>(N, 0);
     qr_code.ct = std::vector<int>(N, 0);
@@ -335,32 +353,27 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
     qr_code.db[0] = 0;
     qr_code.db[1] = 0;
 
-    loop_through_all_cells(qr_code, 0, 0, lb, cb, lt, ct, qb, db);
+    // we need to do some pre processing, set the cells that need to be certain values according to the settings lb, cb, lt, ct, qb, db
+    QR_Code qr_code_new = pre_processing(qr_code, lb, cb, lt, ct, qb, db);
 
-    if (qr_code.has_error == 1)
-    {
-        std::cout << "DEFECT: No QR Code generated!" << std::endl;
-        return 0;
-    }
-    if (qr_codes_generated.size() > 0)
-    {
-        std::cout << "INVALID: " << qr_codes_generated.size() << " QR Codes generated!" << std::endl;
-        return 0;
-    }
+    // qr_code_new is the qr pre processed.
 
-    // se all again to zero
-    qr_code.set_all_to_zero();
-    qr_code.cells[0][0] = 1;
 
-    loop_through_all_cells(qr_code, 0, 0, lb, cb, lt, ct, qb, db); // right side of the tree
+    /*
+        we need to do some pre processing, set the cells that need to be certain values according to the settings lb, cb, lt, ct, qb, db
+        also, we need to find the defects (find if the current lb, cb, lt, ct, qb, db are valid without generating the qr code)
+        make sure to optimize the tree sicne the recursion will be very deep in some cases
+    */
+    // carefull this function is recursive and will run thousands of times
+    loop_through_all_cells(qr_code_new, 0, 0, lb, cb, lt, ct, qb, db);
 
-    if (qr_code.has_error == 0)
+    if (qr_code_new.has_error == 0)
     {
         // check the size of qr_code.qr_codes_generated and make sure its 0
         if (qr_codes_generated.size() == 1)
         {
             std::cout << "VALID: 1 QR Code generated!" << std::endl;
-            qr_code.print_qr_code();
+            qr_code_new.print_qr_code();
             return 0;
         }
 
@@ -381,19 +394,23 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
         One line containing N numbers (each between 1 and N-1), corresponding to the number of color transitions in each column 1 to N (ct). - done
         One line containing 4 numbers (each between 1 and floor(N/2+1)^2), corresponding to the number of black cells in each quadrant 1 to 4 (qb). - done
         One line containing 2 numbers (each between 1 and N), corresponding to the number of black cells in each diagonal 1 to 2 (db). - done
+    
+        0 -> white (from pre-processing)
+        1 -> black (from pre-processing)
+        2 -> white (from tree)
+        3 -> black (from tree)
     */
 
-    if (qr_code.has_error == 1)
+    if (qr_code.has_error == 1 || qr_code.cells[l][c] == 1 || qr_code.cells[l][c] == 0)
     {
+        printQR_code(qr_code);
         return;
     }
-
-    printQR_code(qr_code);
 
     /* color transitions */
     if (c != qr_code.N - 1)
     {
-        if (qr_code.cells[l][c] != qr_code.cells[l][c + 1])
+        if (qr_code.cells[l][c] % 2 != qr_code.cells[l][c + 1] % 2)
         {
             qr_code.ct[c]++;
             if (qr_code.ct[c] > ct[c])
@@ -406,7 +423,7 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
 
     if (l != qr_code.N - 1)
     {
-        if (qr_code.cells[l][c] != qr_code.cells[l + 1][c])
+        if (qr_code.cells[l][c] % 2 != qr_code.cells[l + 1][c] % 2)
         {
             qr_code.lt[l]++;
             if (qr_code.lt[l] > lt[l])
@@ -417,7 +434,10 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
         }
     }
 
-    if (qr_code.cells[l][c] == 1)
+
+
+    /* counting */
+    if (qr_code.cells[l][c] % 2 == 1)
     {
         /* black cells column */
         qr_code.cb[c]++;
@@ -455,8 +475,7 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
             }
         }
 
-        /* quadrants */
-        /*
+        /* quadrants
             1 0
             2 3
         */
@@ -503,57 +522,21 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
             }
         }
     }
-    printQR_code(qr_code);
 
-    /* quadrants, remember that quadrants are like this */
+    /* final cell  */
     if (l == qr_code.N - 1 && c == qr_code.N - 1)
     {
+        printQR_code(qr_code);
 
-        // compare every qr_code cb, lb, ct, lt, qb, db with the given ones in parameters, if they are equal then we found a solution
-        /* for (int i = 0; i < qr_code.N; i++)
+        // REACHED THE END, check if i have a valid qr_code, if so add it to the vector of qr_codes
+        if (qr_code.lb == lb && qr_code.cb == cb && qr_code.lt == lt && qr_code.ct == ct && qr_code.qb == qb && qr_code.db == db)
         {
-            if (qr_code.cb[i] != cb[i])
-            {
-                qr_code.has_error = 1;
-                return;
-            }
-            if (qr_code.lb[i] != lb[i])
-            {
-                qr_code.has_error = 1;
-                return;
-            }
-            if (qr_code.ct[i] != ct[i])
-            {
-                qr_code.has_error = 1;
-                return;
-            }
-            if (qr_code.lt[i] != lt[i])
-            {
-                qr_code.has_error = 1;
-                return;
-            }
+            qr_codes_generated.push_back(qr_code);
+        } else {
+            qr_code.has_error = 1;
         }
-
-        for (int i = 0; i < 4; i++)
-        {
-            if (qr_code.qb[i] != qb[i])
-            {
-                qr_code.has_error = 1;
-                return;
-            }
-        }
-
-        for (int i = 0; i < 2; i++)
-        {
-            if (qr_code.db[i] != db[i])
-            {
-                qr_code.has_error = 1;
-                return;
-            }
-        } */
 
         // if we found a solution, we'll add it to the vector of qr_codes
-        qr_codes_generated.push_back(qr_code);
         return;
     }
 
@@ -568,10 +551,67 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
     }
 
     // if it is valid, we'll add the next possible qr_codes to the tree
-    qr_code.cells[l][c] = 0;
     loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
-    qr_code.cells[l][c] = 1;
+    qr_code.cells[l][c] = 3;
     loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
+}
+
+// this function will pre_process all the cell that fill the criteria of those parameters and 
+QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
+{
+    // i have a qr_code with all cells set to 2
+    // i'll set the cells that are certain to be black or white according to the given info
+    // we'll mark each cell with a number 0 or 1 that is certain to appear in the qr_code
+    // with this we'll reduce the number of possible qr_codes and automatically eliminate some of them before starting the backtracking algorithm
+
+    for (int i = 0; i < qr_code.N; i++)
+    {
+        int num_black = lb[i];
+        int num_transitions = lt[i];
+
+        // process rows, if the number of black cells is equal to the number of black cells in the given info, then we'll set all cells to 1
+        if (num_black == qr_code.N) {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                qr_code.cells[i][j] = 1;
+            }
+        } else if (num_black == 0) {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                qr_code.cells[i][j] = 0;
+            }
+        } 
+
+
+
+    }
+    return qr_code;
+}
+
+// 1 - has error
+// 0 - no error
+bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db) {
+    // first check if lb and cb make sense, floor down N / 2
+    int max_transitions = floor(N / 2);
+
+    for (int i = 0; i < N; i++)
+    {
+        // case 1 and 2: if lb[i] is 0 or N lt must be 0
+        if ((lb[i] == 0  || lb[i] == N) && lt[i] != 0) {
+            return true;
+        }
+
+        // case 3 and 4: if cb[i] is 0 or N ct must be 0
+        if ((cb[i] == 0 || cb[i] == N) && ct[i] != 0) {
+            return true;
+        }
+
+        // case 5: max transitions
+        if (lt[i] > max_transitions || ct[i] > max_transitions) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void printQR_code(QR_Code qr_code)

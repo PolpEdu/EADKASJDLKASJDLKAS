@@ -632,6 +632,16 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
         {
             return true;
         }
+        // case 6: if one diagonal is full of black cells, then each line must have at least 1 black cell
+        //         if both diagonals are full of black cells, then each line must have at least 2 black cells
+        if (db[i] == N && lb[i] == 0 || (db[0] == N && db[1] == N) && lb[i] < 2) {
+            return true;
+        }
+        //same for columns
+        if (db[i] == N && cb[i] == 0 && (db[0] == N && db[1] == N) && cb[i] < 2) {
+            return true;
+        }
+       
     }
     return false;
 }

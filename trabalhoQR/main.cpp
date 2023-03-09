@@ -210,6 +210,8 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
 int check_cell(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 void loop_through_all_cells(QR_Code *qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 void printQR_code(QR_Code *qr_code);
+int sum(std::vector<int> array, int N);
+int sum2(int *array, int N);
 bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 
@@ -608,13 +610,26 @@ QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb
 
 // 1 - has error
 // 0 - no error
-bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
-{
-    // first check if lb and cb make sense, floor down N / 2
-    int max_transitions = floor(N / 2);
+int sum2(int *array, int N){
+    int sum = 0;
+    for(int i = 0; i < N; i++){
+        sum += array[i];
+    }
+    return sum;
+}
 
-    for (int i = 0; i < N; i++)
-    {
+int sum(std::vector<int> array, int N){
+    int sum = 0;
+    for(int i = 0; i < N; i++){
+        sum += array[i];
+    }
+    return sum;
+}
+bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db){
+    // first check if lb and cb make sense, floor down N / 2
+    int max_transitions = floor(N / 2) + 1;
+
+    for (int i = 0; i < N; i++){
         // case 1 and 2: if lb[i] is 0 or N lt must be 0
         if ((lb[i] == 0 || lb[i] == N) && lt[i] != 0)
         {
@@ -632,19 +647,97 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
         {
             return true;
         }
+
         // case 6: if one diagonal is full of black cells, then each line must have at least 1 black cell
         //         if both diagonals are full of black cells, then each line must have at least 2 black cells
-        if (db[i] == N && lb[i] == 0 || (db[0] == N && db[1] == N) && lb[i] < 2) {
+        if ( N % 2 == 0){
+            if (db[i] == N && lb[i] == 0 || (db[0] == N && db[1] == N) && lb[i] < 2) {
+                return true;
+            }
+            //same for columns
+            if (db[i] == N && cb[i] == 0 && (db[0] == N && db[1] == N) && cb[i] < 2) {
+                return true;
+            }
+        } 
+
+
+        //define Xmin and Xmax, Ymin and Ymax for the quadrants
+        int Xmin = 0;
+        int Xmax = 0;
+        int Ymin = 0;
+        int Ymax = 0;
+
+        if (N % 2 == 0){
+            Xmin = N/2;
+            Xmax = N/2;
+            Ymin = N/2;
+            Ymax = N/2;
+        } else {
+            Xmin = floor(N/2);
+            Xmax = floor(N/2) + 1;
+            Ymin = floor(N/2);
+            Ymax = floor(N/2) + 1;
+        }
+
+        /*       Ymin|
+                 +---+---+---+                              qb[0] = 1 Ymin * Xmax
+                 | 2 | 1 | 1 |                              qb[1] = 2 Ymin * Xmin
+          Xmin---+---+---+---+-Xmáx------                   qb[2] = 3 Xmin * Ymax
+                 | 3 | 4 | 4 |                              qb[3] = 4 Xmax * Ymax
+                 +---+---+---+
+                 | 3 | 4 | 4 |
+          Xmin   +---+---+---+
+                     |Ymáx
+        */
+        //case 7: if the number of black cells in a quadrant is greater than the number of cells in that quadrant, then the qr_code is invalid
+        if(qb[0] > Xmax * Ymin || qb[1] > Xmin * Ymin || qb[2] > Xmin * Ymax || qb[3] > Xmax * Ymax){
             return true;
         }
-        //same for columns
-        if (db[i] == N && cb[i] == 0 && (db[0] == N && db[1] == N) && cb[i] < 2) {
+        //verify the sum of black cells per line and per column
+        //the sum of the values in the lb and cb arrays should be equal to the total of black cells in the QR Code
+        int total_blacks_lines = sum(lb, N);
+        int total_blacks_columns = sum(cb, N);
+        int total_blacks_quadrants = sum2(qb, 4);
+
+        if(!(total_blacks_lines == total_blacks_columns && total_blacks_columns == total_blacks_quadrants)){
             return true;
         }
-       
-    }
+
+        //verify that sum of black cells >= sum of black cells in the diagonal
+        int total_blacks_diagonals = sum2(db, 2);
+
+        if(total_blacks_quadrants < total_blacks_diagonals){
+            return true;
+        }
+
+        //verify if the sums of black cells per quadrant are the same when calculated by the sum of the lines and columns of the respective quadrants
+        int sum_top_lines = 0; // quadrants 1 and 2
+        int sum_bottom_lines = 0; // quadrants 3 and 4
+        int sum_left_columns = 0; // quadrants 1 and 4
+        int sum_right_columns = 0; // quadrants 2 and 3
+
+        for(int i = 0; i < floor(N/2); i++){
+            sum_top_lines += lb[i];
+            sum_left_columns += cb[i];
+        }
+
+        for(int i = floor(N/2); i < N; i++){
+            sum_bottom_lines += lb[i];
+            sum_right_columns += cb[i];
+        }
+        //  quadrants 1 and 2               |       quadrants 3 and 4              |       quadrants 1 and 4              |         quadrants 2 and 3
+        if((sum_top_lines != qb[0] + qb[1]) || (sum_bottom_lines != qb[2] + qb[3] || (sum_right_columns != qb[0] + qb[3]) || (sum_left_columns != qb[1] + qb[2]))){
+            return true;
+        }
+
+        // verify if in an odd matrix is all black, then the anti-diagonal must have at least 1 black cell
+        if((N % 2 != 0) && ((db[0] == N && db[1] == 0) || (db[0] == 0 && db[1] == N))){
+            return true;
+        }
     return false;
+    }
 }
+
 
 void printQR_code(QR_Code *qr_code)
 {

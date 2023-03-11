@@ -134,7 +134,6 @@ struct QR_Code
 {
     int N;
     int **cells;
-    int nr_qr_codes = 0;
 
     std::vector<int> cb;
     std::vector<int> lb;
@@ -173,14 +172,137 @@ struct QR_Code
         return new_qr_code;
     }
 
+    void reset_configs()
+    {
+        // reset the vector values to 0 but keep the size
+        this->cb.assign(this->cb.size(), 0);
+        this->lb.assign(this->lb.size(), 0);
+        this->ct.assign(this->ct.size(), 0);
+        this->lt.assign(this->lt.size(), 0);
+        this->qb[0] = 0;
+        this->qb[1] = 0;
+        this->qb[2] = 0;
+        this->qb[3] = 0;
+        this->db[0] = 0;
+        this->db[1] = 0;
+    }
+
     // check if the values given as parameters are the same as the qr code
     int check_if_valid(vector<int> cb, vector<int> lb, vector<int> ct, vector<int> lt, int *qb, int *db)
     {
+        // loop through qr and update the values
+        for (int l = 0; l < this->N; l++)
+        {
+            for (int c = 0; c < this->N; c++)
+            {
+                /* color transitions */
+                if (c != 0)
+                {
+                    /* cout << "yoyo that's ya boi, c: " << c << " l: " << l << endl;
+                    printQR_code(qr_code); */
+                    if (this->cells[l][c] % 2 != this->cells[l][c - 1] % 2)
+                    {
+                        this->lt[l]++;
+                        if (this->lt[l] > lt[l])
+                        {
+                            return 0;
+                        }
+                    }
+                }
+
+                if (l != 0)
+                {
+                    if (this->cells[l][c] % 2 != this->cells[l - 1][c] % 2)
+                    {
+                        this->ct[c]++;
+
+                        if (this->ct[c] > ct[c])
+                        {
+                            // cout << "ct fds" << endl;
+                            return 0;
+                        }
+                    }
+                }
+
+                /* counting */
+                if (this->cells[l][c] % 2 == 1)
+                {
+                    /* black cells column */
+                    this->cb[c]++;
+
+                    /* black cells inline */
+                    this->lb[l]++;
+
+                    /* diagonals */
+                    if (l == c)
+                    {
+                        this->db[0]++;
+                        if (this->db[0] > db[0])
+                        {
+                            return 0;
+                        }
+                    }
+
+                    if (l + c == this->N - 1)
+                    {
+                        this->db[1]++;
+                        if (this->db[1] > db[1])
+                        {
+                            return 0;
+                        }
+                    }
+
+                    /* quadrants
+                        1 0
+                        2 3
+                    */
+                    if (l < (this->N - 1) / 2.0)
+                    {
+                        if (c < (this->N - 1) / 2.0)
+                        {
+                            this->qb[1]++;
+                            if (this->qb[1] > qb[1])
+                            {
+                                return 0;
+                            }
+                        }
+                        else if (c > (this->N - 1) / 2.0)
+                        {
+                            this->qb[0]++;
+                            if (this->qb[0] > qb[0])
+                            {
+                                return 0;
+                            }
+                        }
+                    }
+                    else if (l > (this->N - 1) / 2.0)
+                    {
+                        if (c < (this->N - 1) / 2.0)
+                        {
+                            this->qb[2]++;
+                            if (this->qb[2] > qb[2])
+                            {
+                                return 0;
+                            }
+                        }
+                        else if (c > (this->N - 1) / 2.0)
+                        {
+                            this->qb[3]++;
+                            if (this->qb[3] > qb[3])
+                            {
+                                return 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         /* make a print comparing both vector<int> cb, vector<int> lb, vector<int> ct, vector<int> lt, int *qb, int *db with qr_code->cb, qr_code->lb, qr_code->ct, qr_code->lt, qr_code->qb, qr_code->db */
         // just to print
-        /* for (int i = 0; i < N; i++)
+        for (int i = 0; i < N; i++)
         {
-            cout << "i: " << i << endl;
+            cout << "cb e this: " << i << endl;
             cout << "cb: " << cb[i] << " " << this->cb[i] << endl;
             cout << "lb: " << lb[i] << " " << this->lb[i] << endl;
             cout << "ct: " << ct[i] << " " << this->ct[i] << endl;
@@ -202,14 +324,13 @@ struct QR_Code
         }
 
         cout << "gives:" << endl;
-        // print the cb == this->cb, lb == this->lb, ct == this->ct, lt == this->lt, equal(qb, qb + 4, this->qb), equal(db, db + 2, this->db);
         cout << "cb == this->cb: " << (cb == this->cb) << endl;
         cout << "lb == this->lb: " << (lb == this->lb) << endl;
         cout << "ct == this->ct: " << (ct == this->ct) << endl;
         cout << "lt == this->lt: " << (lt == this->lt) << endl;
         cout << "equal(qb, qb + 4, this->qb): " << equal(qb, qb + 4, this->qb) << endl;
         cout << "equal(db, db + 2, this->db): " << equal(db, db + 2, this->db) << endl;
-        cout << "............." << endl; */
+        cout << "............." << endl;
 
         return cb == this->cb && lb == this->lb && ct == this->ct && lt == this->lt && equal(qb, qb + 4, this->qb) && equal(db, db + 2, this->db);
     }
@@ -340,55 +461,12 @@ int main()
 
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        //std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+        // std::cout << "Elapsed time: " << elapsed.count() << " s\n";
     }
     return 0;
 }
 
-/*
-    In order to get fast output times, we'll use a binary tree to store the possible QR Codes.
-    Whenever we find that our qr code is invalid according to the encoding, we'll stop the branch of the tree, print "INVALID" and return.
-    If we find that our qr code is valid, we'll print "VALID", print the qr_Code and move on to the next branch.
-    If we find that our qr code is a defect, we'll print "DEFECT" and move on to the next branch.
 
-    N saves the information about the size of the QR Code, meaning the number of cells per line/column (N). The QR Shorter Inc. works only with squared QR Codes.
-    lb saves the amount of black cells per line (lb, line blacks, array of size N)
-    cb saves the amount of black cells per column (cb, column blacks, array of size N)
-    lt saves the amount of color transitions per line (lt, line color transitions, array of size N)
-    ct saves the amount of color transitions per column (ct, column color transitions, array of size N)
-    qb saves the amount of black cells per quadrant (qb, quadrant blacks, array of size 4)
-    db saves the amount of black cells per diagonal - main and antidiagonal - (db, diagonal blacks, array of size 2)
-
-
-    i will treverse the qr_code cell by cell and i will add next to it the possible qr_codes that can be generated from the current qr_code.
-
-                                            +--+
-                                            |  | <--- blank qr_code
-                                            |  |
-                                            +--+
-                                +--+                    +--+
-                                |  |                    |# | <--- first cell of the tree, i = 0, j = 0
-                                |  |                    |  |
-                                +--+                    +--+
-                        +--+            +--+        +--+        +--+
-                        |  |            | #|        |# |        |##| <--- second cell of the tree, i = 0, j = 1
-                        |  |            |  |        |  |        |  |
-                        +--+            +--+        +--+        +--+
-                    +--+    +--+    +--+    +--+ +--+    +--+ +--+    +--+
-                    |  |    |  |    | #|    | #| |# |    |# | |##|    |##| <--- third cell of the tree, i = 1, j = 0
-                    |  |    |# |    |  |    |# | |  |    |# | |  |    |# |
-                    +--+    +--+    +--+    +--+ +--+    +--+ +--+    +--+
-                ...................................4th cell.............................................
-
-                quadrants in the qr_code
-                    0   1
-                    2   3
-
-                if it's odd:
-                    2 0 1
-                    0 0 0
-                    3 0 4
-*/
 int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
 
@@ -418,12 +496,10 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
     qr_code.db[1] = 0;
 
     // we need to do some pre processing, set the cells that need to be certain values according to the settings lb, cb, lt, ct, qb, db
-    // QR_Code qr_code_new = pre_processing(qr_code, lb, cb, lt, ct, qb, db);
-    QR_Code qr_code_new = qr_code;
+    QR_Code qr_code_new = pre_processing(qr_code, lb, cb, lt, ct, qb, db);
 
     // qr_code_new is the qr pre processed.
     // cout << "pre-processed:" << endl;
-    // printQR_code(qr_code_new);
 
     /*
         we need to do some pre processing, set the cells that need to be certain values according to the settings lb, cb, lt, ct, qb, db
@@ -461,135 +537,38 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
 
 void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
-    /*
-        One line containing N numbers (each between 1 and N), corresponding to the number of black cells in each line 1 to N (lb). - done
-        One line containing N numbers (each between 1 and N), corresponding to the number of black cells in each column 1 to N (cb). - done
-        One line containing N numbers (each between 1 and N-1), corresponding to the number of color transitions in each line 1 to N (lt). - done
-        One line containing N numbers (each between 1 and N-1), corresponding to the number of color transitions in each column 1 to N (ct). - done
-        One line containing 4 numbers (each between 1 and floor(N/2+1)^2), corresponding to the number of black cells in each quadrant 1 to 4 (qb). - done
-        One line containing 2 numbers (each between 1 and N), corresponding to the number of black cells in each diagonal 1 to 2 (db). - done
-
-        0 . white (from pre-processing)
-        1 . black (from pre-processing)
-        2 . white (from tree)
-        3 . black (from tree)
-    */
-    // printQR_code(qr_code);
 
     // cout << "l: " << l << " c: " << c << endl;
-
-    /* color transitions */
-    if (c !=0)
+    while (qr_code.cells[l][c] == 1 || qr_code.cells[l][c] == 0)
     {
-        /* cout << "yoyo that's ya boi, c: " << c << " l: " << l << endl;
-        printQR_code(qr_code); */
-        if (qr_code.cells[l][c] % 2 != qr_code.cells[l][c -1] % 2)
+        if (l == qr_code.N - 1 && c == qr_code.N - 1)
         {
-            qr_code.lt[l]++;
-            /* if (qr_code.ct[c] > ct[c])
+            printQR_code(qr_code);
+            if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db) == 1)
             {
-                cout << "ct fds" << endl;
-                return;
-            } */
-        }
-    }
-
-    if (l != 0)
-    {
-        if (qr_code.cells[l][c] % 2 != qr_code.cells[l - 1][c] % 2)
-        {
-            qr_code.ct[c]++;
-            /* if (qr_code.lt[l] > lt[l])
-            {
-                cout << "lt fds" << endl;
-                return;
-            } */
-        }
-    }
-
-    /* counting */
-    if (qr_code.cells[l][c] % 2 == 1)
-    {
-        /* black cells column */
-        qr_code.cb[c]++;
-
-        /* black cells inline */
-        qr_code.lb[l]++;
-
-        /* diagonals */
-        if (l == c)
-        {
-            qr_code.db[0]++;
-            /* if (qr_code.db[0] > db[0])
-            {
-                cout << "db 0 fds" << endl;
-                return;
-            } */
-        }
-
-        if (l + c == qr_code.N - 1)
-        {
-            qr_code.db[1]++;
-            /* if (qr_code.db[1] > db[1])
-            {
-                cout << "db 1 fds" << endl;
-                return;
-            } */
-        }
-
-        /* quadrants
-            1 0
-            2 3
-        */
-        if (l < (qr_code.N - 1) / 2.0)
-        {
-            if (c < (qr_code.N - 1) / 2.0)
-            {
-                qr_code.qb[1]++;
-                /* if (qr_code.qb[1] > qb[1])
+                // cout << "FOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOO" << endl;
+                if (qr_codes_generated == 0)
                 {
-                    cout << "qb 1 fds" << endl;
-
-                    return;
-                } */
+                    qr_to_print = qr_code.copy();
+                }
+                qr_codes_generated++;
             }
-            else if (c > (qr_code.N - 1) / 2.0)
-            {
-                qr_code.qb[0]++;
-                /* if (qr_code.qb[0] > qb[0])
-                {
-                    cout << "qb 0 fds" << endl;
-
-                    return;
-                } */
-            }
+            qr_code.reset_configs();
+            return;
         }
-        else if (l > (qr_code.N - 1) / 2.0)
+
+        if (c == qr_code.N - 1)
         {
-            /* cout << "calsfjdaslkçdjkasld" << endl;
-            cout << qr_code.qb[3] << " " << qb[3] << endl;
-            cout << "c: " << c << " N: " << qr_code.N << " N/2: " << qr_code.N / 2.0 << endl;
-            cout << "l: " << l << " N: " << qr_code.N << " N/2: " << qr_code.N / 2.0 << endl; */
-            if (c < (qr_code.N - 1) / 2.0)
-            {
-                qr_code.qb[2]++;
-                /* if (qr_code.qb[2] > qb[2])
-                {
-                    cout << "qb 2 fds" << endl;
-                    return;
-                } */
-            }
-            else if (c > (qr_code.N - 1) / 2.0)
-            {
-                qr_code.qb[3]++;
-                /* if (qr_code.qb[3] > qb[3])
-                {
-                    cout << "qb 3 fds" << endl;
-
-                    return;
-                } */
-            }
+            l++;
+            c = 0;
         }
+        else
+        {
+            c++;
+        }
+
+        loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
+        return;
     }
 
     if (l == qr_code.N - 1 && c == qr_code.N - 1)
@@ -599,12 +578,10 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
             // cout << "FOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOOFOOOOOO" << endl;
             if (qr_codes_generated == 0)
             {
-                qr_to_print= qr_code.copy();
+                qr_to_print = qr_code.copy();
             }
             qr_codes_generated++;
         }
-
-        // printQR_code(qr_code);
 
         return;
     }
@@ -617,28 +594,6 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
     else
     {
         c++;
-    }
-
-    if (qr_code.cells[l][c] == 1 || qr_code.cells[l][c] == 0)
-    {
-        if (l == qr_code.N - 1 && c == qr_code.N - 1)
-        {
-            return;
-        }
-
-        // cout << "skipping cell: " << l << " " << c << endl;
-        if (c == qr_code.N - 1)
-        {
-            c = 0;
-            l++;
-        }
-        else
-        {
-            c++;
-        }
-
-        loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
-        return;
     }
 
     // if it is valid, we'll add the next possible qr_codes to the tree
@@ -674,6 +629,8 @@ QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb
             {
                 qr_code.cells[i][j] = 1;
             }
+            qr_code.lb[i] = qr_code.N;
+            qr_code.lt[i] = 0;
         }
         else if (num_black == 0)
         {
@@ -681,6 +638,35 @@ QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb
             {
                 qr_code.cells[i][j] = 0;
             }
+            qr_code.lb[i] = 0;
+            qr_code.lt[i] = 0;
+        }
+    }
+
+    // column
+    for (int i = 0; i < qr_code.N; i++)
+    {
+        int num_black_c = cb[i];
+        int num_transitions_c = ct[i];
+
+        // process rows, if the number of black cells is equal to the number of black cells in the given info, then we'll set all cells to 1
+        if (num_black_c == qr_code.N)
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                qr_code.cells[j][i] = 1;
+            }
+            qr_code.cb[i] = qr_code.N;
+            qr_code.ct[i] = 0;
+        }
+        else if (num_black_c == 0)
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                qr_code.cells[j][i] = 0;
+            }
+            qr_code.cb[i] = 0;
+            qr_code.ct[i] = 0;
         }
     }
     return qr_code;

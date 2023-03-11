@@ -5,8 +5,9 @@
 #include <chrono>
 #include <math.h>
 
-#define DEBUG 0
-#define TIMES 0
+#define DEBUG 1
+#define TIMES 1
+#define DEBUG_GEN 0
 
 using namespace std;
 
@@ -109,9 +110,17 @@ struct QR_Code
                 {
                     /* black cells column */
                     this->cb[c]++;
+                    if (this->cb[c] > cb[c])
+                    {
+                        return 0;
+                    }
 
                     /* black cells inline */
                     this->lb[l]++;
+                    if (this->lb[l] > lb[l])
+                    {
+                        return 0;
+                    }
 
                     /* diagonals */
                     if (l == c)
@@ -265,7 +274,7 @@ QR_Code qr_to_print;
 
 int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int qb[], int db[]);
 int check_cell(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
-void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+void loop_through_all_cells(QR_Code *qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 void printQR_code(QR_Code qr_code);
 int sum(std::vector<int> array, int N);
 int sum2(int *array, int N);
@@ -342,7 +351,8 @@ int main()
 
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        if (TIMES) std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+        if (TIMES)
+            std::cout << "Elapsed time: " << elapsed.count() << " s\n";
     }
     return 0;
 }
@@ -351,9 +361,12 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
 {
 
     // first detect if the settings are valid
-    if (defect_detection(N, lb, cb, lt, ct, qb, db))
+    if (defect_detection(N, lb, cb, lt, ct, qb, db) == true)
     {
-        std::cout << "DEFECT: No QR Code generated!" << std::endl;
+        if (DEBUG) 
+            std::cout << "DEFECT: No QR Code generated DEFECT DETECTED!" << std::endl;
+        else 
+            std::cout << "DEFECT: No QR Code generated!" << std::endl;
         return 0;
     }
 
@@ -385,9 +398,9 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
     */
     // carefull this function is recursive and will run thousands of times
     // cout << "branch:" << endl;
-    loop_through_all_cells(qr_code_new, 0, 0, lb, cb, lt, ct, qb, db);
-    /* qr_code_new.cells[0][0] = 3;
-    loop_through_all_cells(qr_code_new, 0, 0, lb, cb, lt, ct, qb, db); */
+    loop_through_all_cells(&qr_code_new, 0, 0, lb, cb, lt, ct, qb, db);
+    qr_code_new.cells[0][0] = 3;
+    loop_through_all_cells(&qr_code_new, 0, 0, lb, cb, lt, ct, qb, db);
 
     if (qr_codes_generated == 0)
     {
@@ -412,26 +425,26 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
     return 0;
 }
 
-void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
+void loop_through_all_cells(QR_Code* qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
 
     // cout << "l: " << l << " c: " << c << endl;
-    while (qr_code.cells[l][c] == 1 || qr_code.cells[l][c] == 0)
+    if (qr_code->cells[l][c] == 1 || qr_code->cells[l][c] == 0)
     {
-        if (l == qr_code.N - 1 && c == qr_code.N - 1)
+        if (l == qr_code->N - 1 && c == qr_code->N - 1)
         {
-            if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+            if (qr_code->check_if_valid(lb, cb, lt, ct, qb, db))
             {
                 if (qr_codes_generated == 0)
                 {
-                    qr_to_print = qr_code.copy();
+                    qr_to_print = qr_code->copy();
                 }
                 qr_codes_generated++;
             }
             return;
         }
 
-        if (c == qr_code.N - 1)
+        if (c == qr_code->N - 1)
         {
             l++;
             c = 0;
@@ -440,15 +453,20 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
         {
             c++;
         }
+        loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
+
+        return;
     }
 
-    if (l == qr_code.N - 1 && c == qr_code.N - 1)
+
+
+    if (l == qr_code->N - 1 && c == qr_code->N - 1)
     {
-        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+        if (qr_code->check_if_valid(lb, cb, lt, ct, qb, db))
         {
             if (qr_codes_generated == 0)
             {
-                qr_to_print = qr_code.copy();
+                qr_to_print = qr_code->copy();
             }
             qr_codes_generated++;
         }
@@ -456,7 +474,7 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
         return;
     }
 
-    if (c == qr_code.N - 1)
+    if (c == qr_code->N - 1)
     {
         l++;
         c = 0;
@@ -471,12 +489,12 @@ void loop_through_all_cells(QR_Code qr_code, int l, int c, std::vector<int> lb, 
     //      << "c: " << c << " l: " << l << endl;
     loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
 
-    qr_code.cells[l][c] = 3;
+    qr_code->cells[l][c] = 3;
     // cout << "going right branch -> "
     //      << "c: " << c << " l: " << l << endl;
     loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
 
-    qr_code.cells[l][c] = 2;
+    qr_code->cells[l][c] = 2;
 }
 
 // this function will pre_process all the cell that fill the criteria of those parameters and
@@ -542,9 +560,6 @@ QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb
 
     // deduct the cell in each quadrant
 
-
-
-    
     return qr_code;
 }
 

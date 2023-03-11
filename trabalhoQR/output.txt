@@ -1,16 +1,2 @@
-VALID: 1 QR Code generated!
-+---+
-|#  |
-|   |
-|  #|
-+---+
-INVALID: 2 QR Codes generated!
-DEFECT: No QR Code generated!
-DEFECT: No QR Code generated!
-VALID: 1 QR Code generated!
-+----+
-|    |
-|    |
-|    |
-|    |
-+----+
+DEFECT: No QR Code generated DEFECT DETECTED!
+Elapsed time: 0.00012 s

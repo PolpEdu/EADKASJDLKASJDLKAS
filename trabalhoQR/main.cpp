@@ -5,8 +5,8 @@
 #include <chrono>
 #include <math.h>
 
-#define DEBUG 1
-#define TIMES 1
+#define DEBUG 0
+#define TIMES 0
 #define DEBUG_GEN 0
 
 using namespace std;
@@ -69,124 +69,8 @@ struct QR_Code
     }
 
     // check if the values given as parameters are the same as the qr code
-    int check_if_valid(vector<int> cb, vector<int> lb, vector<int> ct, vector<int> lt, int *qb, int *db)
+    int check_if_valid(vector<int> cb, vector<int> lb, vector<int> ct, vector<int> lt, int *qb, int *db, int c, int l, int b)
     {
-        // loop through qr and update the values
-        for (int l = 0; l < this->N; l++)
-        {
-            for (int c = 0; c < this->N; c++)
-            {
-                /* color transitions */
-                if (c != 0)
-                {
-                    /* cout << "yoyo that's ya boi, c: " << c << " l: " << l << endl;
-                    printQR_code(qr_code); */
-                    if (this->cells[l][c] % 2 != this->cells[l][c - 1] % 2)
-                    {
-                        this->lt[l]++;
-                        if (this->lt[l] > lt[l])
-                        {
-                            return 0;
-                        }
-                    }
-                }
-
-                if (l != 0)
-                {
-                    if (this->cells[l][c] % 2 != this->cells[l - 1][c] % 2)
-                    {
-                        this->ct[c]++;
-
-                        if (this->ct[c] > ct[c])
-                        {
-                            // cout << "ct fds" << endl;
-                            return 0;
-                        }
-                    }
-                }
-
-                /* counting */
-                if (this->cells[l][c] % 2 == 1)
-                {
-                    /* black cells column */
-                    this->cb[c]++;
-                    if (this->cb[c] > cb[c])
-                    {
-                        return 0;
-                    }
-
-                    /* black cells inline */
-                    this->lb[l]++;
-                    if (this->lb[l] > lb[l])
-                    {
-                        return 0;
-                    }
-
-                    /* diagonals */
-                    if (l == c)
-                    {
-                        this->db[0]++;
-                        if (this->db[0] > db[0])
-                        {
-                            return 0;
-                        }
-                    }
-
-                    if (l + c == this->N - 1)
-                    {
-                        this->db[1]++;
-                        if (this->db[1] > db[1])
-                        {
-                            return 0;
-                        }
-                    }
-
-                    /* quadrants
-                        1 0
-                        2 3
-                    */
-                    if (l < (this->N - 1) / 2.0)
-                    {
-                        if (c < (this->N - 1) / 2.0)
-                        {
-                            this->qb[1]++;
-                            if (this->qb[1] > qb[1])
-                            {
-                                return 0;
-                            }
-                        }
-                        else if (c > (this->N - 1) / 2.0)
-                        {
-                            this->qb[0]++;
-                            if (this->qb[0] > qb[0])
-                            {
-                                return 0;
-                            }
-                        }
-                    }
-                    else if (l > (this->N - 1) / 2.0)
-                    {
-                        if (c < (this->N - 1) / 2.0)
-                        {
-                            this->qb[2]++;
-                            if (this->qb[2] > qb[2])
-                            {
-                                return 0;
-                            }
-                        }
-                        else if (c > (this->N - 1) / 2.0)
-                        {
-                            this->qb[3]++;
-                            if (this->qb[3] > qb[3])
-                            {
-                                return 0;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         if (DEBUG)
         {
             for (int i = 0; i < N; i++)
@@ -222,7 +106,251 @@ struct QR_Code
             cout << "............." << endl;
         }
 
-        return cb == this->cb && lb == this->lb && ct == this->ct && lt == this->lt && equal(qb, qb + 4, this->qb) && equal(db, db + 2, this->db);
+        /*
+        bool calcTransLine(vector<int> &array, int y, int x)
+    {
+        int counter = 0;
+        for (int i = 0; i < x; ++i)
+        {
+            if (array[i] % 2 != array[i + 1] % 2)
+                counter++;
+        }
+        if (x == array.size() - 1 && counter < lt[y])
+            return false;
+        else if (counter > lt[y])
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool dbverify(vector<vector<int>> &qrcode, int y, int x)
+    {
+        int diag = 0;
+        int cdiag = 0;
+
+        for (int i = 0; i < y + 1; ++i)
+        {
+            for (int j = 0; j < x + 1; j++)
+            {
+                if (i == j && qrcode[i][j] % 2)
+                    diag++;
+
+                if (tam - i - 1 == j && qrcode[i][j] % 2)
+                    cdiag++;
+            }
+        }
+
+        // print qrcode
+        //  for (size_t i = 0; i < tam; i++){
+        //      for (size_t j = 0; j < tam; j++){
+        //          cout << qrcode[i][j] << " ";
+        //      }
+        //      cout << endl;
+        //  }
+
+        if (diag > db[0] || cdiag > db[1])
+            return false;
+        if (x == tam - 1 && y == tam - 1 && (diag < db[0] || cdiag < db[1]))
+            return false;
+
+        if ((x == y && tam - (x + 1) < db[0] - diag))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool calclineblacks(int blacks, int y, int x)
+    {
+        if (x == tam - 1 && blacks < lb[y] || blacks > lb[y])
+            return false;
+
+        return true;
+        //???????? return !(x == tam - 1 && blacks < lb[y] || blacks > lb[y]);
+    }
+
+    bool quadrantes(vector<vector<int>> &qrcode, int y, int x)
+    {
+        int quad[] = {0, 0, 0, 0};
+        int q = 0;
+
+        for (int i = 1; i < tam + 1; ++i)
+        {
+            for (int j = 1; j < tam + 1; ++j)
+            {
+                // primeiro quadrante
+                if (i <= tam / 2 && j > tam / 2)
+                    quad[0] += qrcode[i - 1][j - 1] % 2;
+                // segundo quadrante
+                else if (i <= tam / 2 && j <= tam / 2)
+                    quad[1] += qrcode[i - 1][j - 1] % 2;
+                // terceiro quadrante
+                else if (i > tam / 2 && j <= tam / 2)
+                    quad[2] += qrcode[i - 1][j - 1] % 2;
+                // quarto quadrante
+                else if (i > tam / 2 && j > tam / 2)
+                {
+                    quad[3] += qrcode[i - 1][j - 1] % 2;
+                }
+            }
+        }
+
+        // primeiro quadrante
+        if (y + 1 <= tam / 2 && x + 1 > tam / 2)
+        {
+        }
+        q = 0;
+        // segundo quadrante
+        if (y + 1 <= tam / 2 && x + 1 <= tam / 2)
+            q = 1;
+        // terceiro quadrante
+        if (y + 1 > tam / 2 && x + 1 <= tam / 2)
+            q = 2;
+        // quarto quadrante
+        if (y + 1 > tam / 2 && x + 1 > tam / 2)
+            q = 3;
+
+        int aux = 0, count = 0;
+
+        if (tam % 2 == 0)
+        {
+            aux = tam / 2;
+
+            if (q == 0)
+                count = (tam - (x + 1)) + (aux - (y + 1)) * aux;
+            else if (q == 1)
+                count = (aux - (x + 1)) + (aux - (y + 1)) * aux;
+            else if (q == 2)
+                count = (aux - (x + 1)) + ((tam - (y + 1))) * aux;
+            else if (q == 3)
+                count = (tam - (x + 1)) + (tam - (y + 1)) * aux;
+        }
+
+        else
+        {
+            aux = tam / 2 + 1;
+
+            if (q == 0)
+                count = (tam - (x + 1)) + (aux - 1 - (y + 1)) * aux;
+            else if (q == 1)
+                count = (aux - 1 - (x + 1)) + (aux - 1 - (y + 1)) * (aux - 1);
+            else if (q == 2)
+                count = (aux - 1 - (x + 1)) + ((tam - (y + 1))) * (aux - 1);
+            else if (q == 3)
+                count = (tam - (x + 1)) + (tam - (y + 1)) * aux;
+        }
+
+        if (count < qb[q] - quad[q])
+        {
+
+            return false;
+        }
+
+        for (int i = 0; i < 4; ++i)
+        {
+            if (x == tam - 1 && y == tam - 1 && quad[i] < qb[i] || quad[i] > qb[i])
+                return false;
+        }
+        return true;
+    }
+
+    bool calcTransCol(vector<vector<int>> &qrcode, int y, int x)
+    {
+
+        for (int j = 0; j < x + 1; ++j)
+        {
+            int counter = 0;
+            for (int i = 0; i < y; i++)
+            {
+                if (qrcode[i][j] % 2 != qrcode[i + 1][j] % 2)
+                {
+                    counter++;
+                }
+            }
+            if (y == tam - 1 && counter < ct[j])
+                return false;
+
+            else if (counter > ct[j])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool countcol(vector<vector<int>> &qrcode, int y, int x)
+    {
+        vector<int> bcol;
+        for (int i = 0; i < tam; ++i)
+        {
+            bcol.push_back(0);
+        }
+        int trans = 0;
+        for (int j = 0; j < x + 1; ++j)
+        {
+            int counter = 0;
+            for (int i = 0; i < y + 1; ++i)
+            {
+                counter += qrcode[i][j] % 2;
+            }
+            if (y == tam - 1 && counter < cb[j])
+                return false;
+            else if (counter > cb[j])
+            {
+                return false;
+            }
+            bcol[j] = counter;
+        }
+
+        // calcular transições para a coluna de x
+        // apenas preciso de fazer isto de o pixel em que estiver for um 1
+        if (qrcode[y][x])
+        {
+            for (int j = 0; j < x + 1; ++j)
+            {
+                for (int i = 0; i < y; ++i)
+                {
+                    if (qrcode[i][j] % 2 != qrcode[i + 1][j] % 2 && j == x)
+                    {
+                        trans++;
+                    }
+                }
+            }
+            if (tam - y - 1 < cb[x] - bcol[x])
+            {
+                return false;
+            }
+            if (cb[x] == bcol[x] && (ct[x] - trans - 1 > 2))
+            {
+                return false;
+            }
+            if (tam - y - 1 < ct[x] - trans - 1)
+            {
+                return false;
+            }
+        }
+        // if(!(blacksl+1 == lb[y] && lt[y]-transitions -1 > 2) && !(tam-x-1 < lt[y]-transitions-1) && !(lb[y] - blacksl -1 > tam-x-1) && !(transitions == lt[y] && (tam-x-1 < lb[y]-blacksl-1))){
+        return true;
+    }
+
+        */
+        bool trans_l = true;
+        int counter = 0;
+        for (int i = 0; i < c; i++)
+        {
+            if (this->cells[l][i] % 2 != this->cells[l][i + 1] % 2)
+            {
+                counter++;
+            }
+        }
+
+        trans_l = 
+        
+
+        bool line_blacks = c == this->N - 1 &&  b < this->lb[l] || b > this->lb[l];
     }
 
     void set_all_to(int value)
@@ -234,6 +362,22 @@ struct QR_Code
                 this->cells[i][j] = value;
             }
         }
+    }
+
+    int calc_transitions(int l, int c)
+    {
+        int i = 0;
+        for (int j = 0; j < c; j++)
+        {
+            if (j != 0)
+            {
+                if (this->cells[l][j] % 2 != this->cells[l][j - 1] % 2)
+                {
+                    i++;
+                }
+            }
+        }
+        return i;
     }
 
     void print_qr_code()
@@ -272,14 +416,14 @@ struct QR_Code
 int qr_codes_generated;
 QR_Code qr_to_print;
 
-int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int qb[], int db[]);
 int check_cell(QR_Code qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
-void loop_through_all_cells(QR_Code *qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+void loop_through_all_cells(QR_Code &qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db, int lb_counter);
 void printQR_code(QR_Code qr_code);
 int sum(std::vector<int> array, int N);
 int sum2(int *array, int N);
 bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
-QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+void pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
+int init(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db);
 
 int main()
 {
@@ -347,7 +491,7 @@ int main()
         // count time
         auto start = std::chrono::high_resolution_clock::now();
 
-        start_generating_tree(N, lb, cb, lt, ct, qb, db);
+        init(N, lb, cb, lt, ct, qb, db);
 
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
@@ -357,15 +501,15 @@ int main()
     return 0;
 }
 
-int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
+int init(int N, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
 
     // first detect if the settings are valid
-    if (defect_detection(N, lb, cb, lt, ct, qb, db) == true)
+    if (defect_detection(N, lb, cb, lt, ct, qb, db))
     {
-        if (DEBUG) 
-            std::cout << "DEFECT: No QR Code generated DEFECT DETECTED!" << std::endl;
-        else 
+        if (DEBUG)
+            std::cout << "DEFECT: No QR Code generated DEFECT!" << std::endl;
+        else
             std::cout << "DEFECT: No QR Code generated!" << std::endl;
         return 0;
     }
@@ -389,18 +533,14 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
     qr_code.db[1] = 0;
 
     // we need to do some pre processing, set the cells that need to be certain values according to the settings lb, cb, lt, ct, qb, db
-    QR_Code qr_code_new = pre_processing(qr_code, lb, cb, lt, ct, qb, db);
+    pre_processing(qr_code, lb, cb, lt, ct, qb, db);
 
     /*
         we need to do some pre processing, set the cells that need to be certain values according to the settings lb, cb, lt, ct, qb, db
         also, we need to find the defects (find if the current lb, cb, lt, ct, qb, db are valid without generating the qr code)
         make sure to optimize the tree sicne the recursion will be very deep in some cases
     */
-    // carefull this function is recursive and will run thousands of times
-    // cout << "branch:" << endl;
-    loop_through_all_cells(&qr_code_new, 0, 0, lb, cb, lt, ct, qb, db);
-    qr_code_new.cells[0][0] = 3;
-    loop_through_all_cells(&qr_code_new, 0, 0, lb, cb, lt, ct, qb, db);
+    loop_through_all_cells(qr_code, 0, 0, lb, cb, lt, ct, qb, db, 0);
 
     if (qr_codes_generated == 0)
     {
@@ -425,142 +565,414 @@ int start_generating_tree(int N, std::vector<int> lb, std::vector<int> cb, std::
     return 0;
 }
 
-void loop_through_all_cells(QR_Code* qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
+void loop_through_all_cells(QR_Code &qr_code, int l, int c, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db, int lb_counter)
 {
-
-    // cout << "l: " << l << " c: " << c << endl;
-    if (qr_code->cells[l][c] == 1 || qr_code->cells[l][c] == 0)
+    if (l == qr_code.N)
     {
-        if (l == qr_code->N - 1 && c == qr_code->N - 1)
-        {
-            if (qr_code->check_if_valid(lb, cb, lt, ct, qb, db))
-            {
-                if (qr_codes_generated == 0)
-                {
-                    qr_to_print = qr_code->copy();
-                }
-                qr_codes_generated++;
-            }
-            return;
-        }
-
-        if (c == qr_code->N - 1)
-        {
-            l++;
-            c = 0;
-        }
-        else
-        {
-            c++;
-        }
-        loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
-
+        qr_codes_generated++;
+        qr_to_print = qr_code;
         return;
     }
 
-
-
-    if (l == qr_code->N - 1 && c == qr_code->N - 1)
+    if (qr_code.cells[l][c] == 0)
     {
-        if (qr_code->check_if_valid(lb, cb, lt, ct, qb, db))
+        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
         {
-            if (qr_codes_generated == 0)
+            if (c == qr_code.N - 1)
             {
-                qr_to_print = qr_code->copy();
+                l++;
+                c = 0;
+                lb_counter = 0;
             }
-            qr_codes_generated++;
+            else
+            {
+                c++;
+            }
         }
+        loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db, lb_counter);
 
         return;
     }
+    else if (qr_code.cells[l][c] == 1)
+    {
+        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+        {
+            if (c == qr_code.N - 1)
+            {
+                l++;
+                c = 0;
+                lb_counter = 0;
+            }
+            else
+            {
+                c++;
+                lb_counter++;
+            }
+            loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db, lb_counter);
+        }
+        return;
+    }
 
-    if (c == qr_code->N - 1)
+    qr_code.cells[l][c] = 1;
+    int t = qr_code.calc_transitions(l, c);
+
+    if (c == qr_code.N - 1)
     {
         l++;
         c = 0;
+        lb_counter = 0;
+
+        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+        {
+            loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db, lb_counter);
+        }
+
+        qr_code.cells[l - 1][c] = 2; // go back to the previous cell
+
+        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+        {
+            loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db, lb_counter);
+        }
     }
     else
     {
         c++;
+        lb_counter++;
+        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+        {
+            if (!(lb_counter + 1 == lb[l] && lt[l] - t > 3) && !(qr_code.N - c - 1 < lt[l] - t - 1) && !(lb[l] - lb_counter - 1 > qr_code.N - c - 1) && !(t == lt[l] && (qr_code.N - c - 1 < lb[l] - lb_counter - 1)))
+            {
+                loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db, lb_counter);
+            }
+        }
+
+        qr_code.cells[l][c - 1] = 2; // go back to the previous cell
+
+        if (qr_code.check_if_valid(lb, cb, lt, ct, qb, db))
+        {
+            if (!(lb[l] - lb_counter - 1 > qr_code.N - c - 1))
+            {
+                loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db, lb_counter);
+            }
+        }
     }
-
-    // if it is valid, we'll add the next possible qr_codes to the tree
-    // cout << "going left branch -> "
-    //      << "c: " << c << " l: " << l << endl;
-    loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
-
-    qr_code->cells[l][c] = 3;
-    // cout << "going right branch -> "
-    //      << "c: " << c << " l: " << l << endl;
-    loop_through_all_cells(qr_code, l, c, lb, cb, lt, ct, qb, db);
-
-    qr_code->cells[l][c] = 2;
 }
 
 // this function will pre_process all the cell that fill the criteria of those parameters and
-QR_Code pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
+void pre_processing(QR_Code qr_code, std::vector<int> lb, std::vector<int> cb, std::vector<int> lt, std::vector<int> ct, int *qb, int *db)
 {
-    // i have a qr_code with all cells set to 2
-    // i'll set the cells that are certain to be black or white according to the given info
-    // we'll mark each cell with a number 0 or 1 that is certain to appear in the qr_code
-    // with this we'll reduce the number of possible qr_codes and automatically eliminate some of them before starting the backtracking algorithm
+    vector<int> white_line = vector<int>(qr_code.N, 0);
+    vector<int> black_line = vector<int>(qr_code.N, 0);
+
+    int number_of_white_lines = 0;
+    int number_of_black_lines = 0;
 
     for (int i = 0; i < qr_code.N; i++)
     {
-        int num_black = lb[i];
-        int num_transitions = lt[i];
-
-        // process rows, if the number of black cells is equal to the number of black cells in the given info, then we'll set all cells to 1
-        if (num_black == qr_code.N)
+        // simple case, everything filled
+        if (lb[i] == qr_code.N)
         {
+            black_line[i] = 1;
+            number_of_black_lines++;
             for (int j = 0; j < qr_code.N; j++)
             {
                 qr_code.cells[i][j] = 1;
             }
-            qr_code.lb[i] = qr_code.N;
-            qr_code.lt[i] = 0;
         }
-        else if (num_black == 0)
+        else if (lb[i] == 0)
         {
+            white_line[i] = 1;
+            number_of_white_lines++;
             for (int j = 0; j < qr_code.N; j++)
             {
                 qr_code.cells[i][j] = 0;
             }
-            qr_code.lb[i] = 0;
-            qr_code.lt[i] = 0;
+        }
+        // check for 1 transition while there is just a black cell, this means that
+        // the cell is in the corners of the line (we don't know what corner, left or right)
+        if ((lb[i] == 1) && (lt[i] == 1))
+        {
+            for (int j = 1; j < qr_code.N - 1; j++)
+            {
+                // middle of the line, filled with white
+                qr_code.cells[i][j] = 0;
+            }
+        }
+        // the opposite of the previous case, where we have still one transition but this time
+        // we have lots of black cells
+        if ((lb[i] == qr_code.N - 1) && (lt[i] == 1))
+        {
+            // fill the middle of the line with black
+            for (int j = 1; j < qr_code.N - 1; j++)
+            {
+                qr_code.cells[i][j] = 1;
+            }
+        }
+
+        // check for "chess pattern"
+        if (lt[i] == qr_code.N - 1 && lb[i] == qr_code.N / 2 + 1)
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                if (j % 2 == 0)
+                {
+                    qr_code.cells[i][j] = 1;
+                }
+                else
+                {
+                    qr_code.cells[i][j] = 0;
+                }
+            }
         }
     }
+    /* ##################################################*/
 
-    // column
+    // Loop through each line of the QR code and fill the line with black cells where there is only one color transition (lt[i] == 1) across the entire line
     for (int i = 0; i < qr_code.N; i++)
     {
-        int num_black_c = cb[i];
-        int num_transitions_c = ct[i];
-
-        // process rows, if the number of black cells is equal to the number of black cells in the given info, then we'll set all cells to 1
-        if (num_black_c == qr_code.N)
+        // we only have one color transition in the line
+        if (lt[i] == 1)
         {
-            for (int j = 0; j < qr_code.N; j++)
+            // we'll fill the line with black cells
+            for (int j = lb[i]; j < qr_code.N - lb[i]; j++)
             {
-                qr_code.cells[j][i] = 1;
+                qr_code.cells[i][j] = 0; // this
             }
-            qr_code.cb[i] = qr_code.N;
-            qr_code.ct[i] = 0;
         }
-        else if (num_black_c == 0)
+    }
+    /* ##################################################*/
+
+    for (int l = 0; l < qr_code.N; l++)
+    {
+        // fill columns
+        if (cb[l] == qr_code.N)
         {
             for (int j = 0; j < qr_code.N; j++)
             {
-                qr_code.cells[j][i] = 0;
+                qr_code.cells[j][l] = 1;
             }
-            qr_code.cb[i] = 0;
-            qr_code.ct[i] = 0;
+        }
+        else if (cb[l] == 0)
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                qr_code.cells[j][l] = 0;
+            }
+        }
+
+        // fill the rest of the qr_code with black cells
+        if (qr_code.N - number_of_white_lines == cb[l])
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                if (white_line[j] == 0)
+                {
+                    qr_code.cells[j][l] = 1;
+                }
+            }
+        }
+
+        // fill the rest of the qr_code with white cells
+        if (qr_code.N - number_of_black_lines == 0)
+        {
+            for (int j = 0; j < qr_code.N - number_of_black_lines; j++)
+            {
+                if (black_line[j] == 0)
+                {
+                    qr_code.cells[j][l] = 0;
+                }
+            }
+        }
+    }
+    /* ##################################################*/
+
+    // check for a bulls eye pattern (target pattern)
+    vector<int> diagonal = vector<int>(qr_code.N, 0);
+    vector<int> inv_diagonal = vector<int>(qr_code.N, 0);
+    int n_crossed = 0;         // number of crossed cells
+    int n_counter_crossed = 0; // number of crossed cells in the diagonal
+    for (int i = 0; i < qr_code.N; i++)
+    {
+        for (int j = 0; j < qr_code.N; j++)
+        {
+            if (i == j)
+            {
+                // we are in the diagonal, check if we have the same number of black cells in the line and in the column
+                if (cb[i] == qr_code.N && lb[j] == qr_code.N)
+                {
+                    // if so, we have a bulls eye pattern, store the diagonal and the number of marks
+                    diagonal[i] = 1;
+                    n_crossed++;
+                }
+            }
+            if (i + j == qr_code.N - 1)
+            {
+                // we are in the counter diagonal, check if we have the same number of black cells in the line and in the column
+                if (cb[i] == qr_code.N && lb[j] == qr_code.N)
+                {
+                    // if so, we have a bulls eye pattern, store the diagonal and the number of marks
+                    inv_diagonal[i] = 1;
+                    n_counter_crossed++;
+                }
+            }
         }
     }
 
-    // deduct the cell in each quadrant
+    // if the number of marks is the same of the number of black cells in the diagonal, fill the diagonal with white cells
+    if (n_crossed == db[0])
+    {
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                if (i == j && diagonal[i] == 0)
+                {
+                    qr_code.cells[i][j] = 0;
+                }
+            }
+        }
+    }
 
-    return qr_code;
+    // if the number of marks is the same of the number of black cells in the counter diagonal, fill the counter diagonal with white cells
+    if (n_counter_crossed == db[1])
+    {
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            for (int j = 0; j < qr_code.N; j++)
+            {
+                if (i + j == qr_code.N - 1 && inv_diagonal[i] == 0)
+                {
+                    qr_code.cells[i][j] = 0;
+                }
+            }
+        }
+    }
+
+    /* ##################################################*/
+
+    // check if the diagonal is the same of N, if so that means that the diagonal is filled with black cells
+    if (db[0] == qr_code.N)
+    {
+        // fill the diagonal with black cells
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            for (int k = 0; i < qr_code.N; k++)
+            {
+                // fill the diagonal as normal
+                if (i == k)
+                {
+                    qr_code.cells[i][k] = 1;
+                }
+            }
+        }
+
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            // check if the line contains just one black cell
+            if (lb[i] == 1)
+            {
+                // since we have just one cell (the cell of the diagonal), that means the other cells of the square are white
+                for (int j = 0; j < qr_code.N; j++)
+                {
+                    if (j != i)
+                    {
+                        qr_code.cells[i][j] = 0;
+                    }
+                }
+            }
+        }
+    }
+    // check if we have an empty diagonal, if so that means that the diagonal is filled with white cells
+    else if (db[0] == 0)
+    {
+        // fill the diagonal with white cells
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            for (int k = 0; i < qr_code.N; k++)
+            {
+                // fill the diagonal as normal
+                if (i == k)
+                {
+                    qr_code.cells[i][k] = 0;
+                }
+            }
+        }
+
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            // check if the line contains just one white cell
+            if (lb[i] == qr_code.N - 1)
+            {
+                // since we have just one white cell (the cell of the diagonal), that means the other cells of the square are black
+                for (int j = 0; j < qr_code.N; j++)
+                {
+                    if (j != i)
+                    {
+                        qr_code.cells[i][j] = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // same logic as above, but for the inverse diagonal
+    if (db[1] == 0)
+    {
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            for (int k = 0; i < qr_code.N; k++)
+            {
+                if (i + k == qr_code.N - 1)
+                {
+                    qr_code.cells[i][qr_code.N - 1 - i] = 0;
+                }
+            }
+        }
+
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            if (lb[i] == qr_code.N - 1)
+            {
+                for (int j = 0; j < qr_code.N; j++)
+                {
+                    if (i + j != qr_code.N - 1)
+                    {
+                        qr_code.cells[i][j] = 1;
+                    }
+                }
+            }
+        }
+    }
+    else if (db[1] == qr_code.N)
+    {
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            for (int k = 0; i < qr_code.N; k++)
+            {
+                if (i + k == qr_code.N - 1)
+                {
+                    qr_code.cells[i][qr_code.N - 1 - i] = 1;
+                }
+            }
+        }
+
+        for (int i = 0; i < qr_code.N; i++)
+        {
+            if (lb[i] == 1)
+            {
+                for (int j = 0; j < qr_code.N; j++)
+                {
+                    if (i + j != qr_code.N - 1)
+                    {
+                        qr_code.cells[i][j] = 0;
+                    }
+                }
+            }
+        }
+    }
+    /* ##################################################*/
+
+    // todo: more stuff to do probably
 }
 
 int sum2(int *array, int N)

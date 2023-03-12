@@ -1,2 +1,0 @@
-DEFECT: No QR Code generated DEFECT DETECTED!
-Elapsed time: 0.00012 s

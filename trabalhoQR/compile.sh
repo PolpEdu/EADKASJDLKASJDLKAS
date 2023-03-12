@@ -1,2 +1,2 @@
 g++ -std=c++17 main.cpp -o main
-./main < input.txt > output.txt
+./main < input.txt

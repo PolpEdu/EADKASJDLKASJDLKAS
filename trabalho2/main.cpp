@@ -10,6 +10,12 @@
 
 using namespace std;
 
+struct res
+{
+    vector<int> route;
+    long int profit;
+};
+
 /*
 
 As a personal rule, John never wants to have more than K shares from a company.
@@ -58,7 +64,7 @@ Output
 510 1
 150 4
 
-nput
+Input
 The first line of the input gives an integer 1, 2 or 3, denoting which task to solve.
 
 The second line of the input gives four-space separated integers N, D, K, R.
@@ -75,7 +81,9 @@ For task 3, output one line for each company with two space-separated integers. 
 (a+b) mod  m = ((a mod  m)+(b mod  m)) mod  m
 */
 long int bestProfit(vector<int> shareValues, int K, int R, int D);
+struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxProfit,  vector<int> bestRoute);
 void route(vector<int> shareValues, int K, int R, int D);
+long int calc_Profit(vector<int> route, vector<int> shareValues, int R);
 
 int main()
 {
@@ -127,20 +135,129 @@ int main()
 long int bestProfit(vector<int> shareValues, int K, int R, int D)
 {
     // i can buy less K shares in one transaction
-    // i can perform at most one transaction per day 
+    // i can perform at most one transaction per day
     // the fee is R for every share bought, no fee when selling
-    
+
     // create a vector to store the best profit for each day
     vector<int> maxDelta(D, 0);
 
+    return 0;
 }
 
-void route(vector<int> shareValues, int K, int R, int D) {
+// For the second task (100 points), for each company, you have to print the best profit and an optimal trading scheme, that is, print the information of how many shares to buy or sell each day to get the best profit.
+void route(vector<int> shareValues, int K, int R, int D)
+{
+    long int maxProfit = 0;
+    vector<int> bestRoute(D, 0);
+
+    // STARTING IN THE END OF THE MATRIX, select the route of values, going up and left that have the most |delta|
+    res r = findRoutes(D, K, R, shareValues, maxProfit, bestRoute);
+    cout << r.profit << endl;
+    for (int i = 0; i < r.route.size(); i++)
+    {
+        cout << r.route[i] << " ";
+    }
+
+    cout << endl;
+}
+
+// DYNAMIC PROGRAMMING GRAPH
+struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxProfit,  vector<int> bestRoute)
+{
+
+    /*
+        2 5 3 10 n d k r
+        100 20 40 200 170
+    */
+
+    int maxDeltaX = 0;
+    int maxDeltaY = 0;
+    int maxDelta = 0;
+    vector<vector<int>> delta(D, vector<int>(D, 0));
+    for (int i = 0; i < D; i++)
+    {
+        for (int j = i + 1; j < D; j++)
+        {
+            delta[i][j] = shareValues[j] - shareValues[i];
+            if (delta[i][j] > maxDelta)
+            {
+                maxDelta = delta[i][j];
+                maxDeltaX = i;
+                maxDeltaY = j;
+            }
+        }
+    }
+
+
+    /*
+        delta matrix
+        0 -80 -60 100 70
+        0 0 20 180 150
+        0 0 0 160 130
+        0 0 0 0 -30
+        0 0 0 0 0
+    */
+
+    // this matrix will be reserved for a trade that we want to make
+    vector<int> lockedInterval = {0, 0};
+
+    // start in the end of the matrix, in the case above, start in -30
+    for (int i = D - 1; i >= 0; i--)
+    {
+        for (int j = D - 1; j >= i; j--)
+        {
+            // we start at the end to find close gap trades. we dont want to start with a trade that could potentialy trades all the profits
+            
+
+
+        }
+    }
+
+    // create new struct res to store best route and profit
+    res r;
+    r.route = bestRoute;
+    r.profit = maxProfit;
+    return r;
+}
+
+// debug func
+void p_matrix(vector<vector<int>> matrix)
+{
+    for (int i = 0; i < matrix.size(); i++)
+    {
+        for (int j = 0; j < matrix[i].size(); j++)
+        {
+            cout << matrix[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
+long int calc_Profit(vector<int> route, vector<int> shareValues, int R)
+{
     long int maxProfit = 0;
 
+    for (int i = 0; i < route.size(); i++)
+    {
+        if (route[i] > 0)
+        {
+            maxProfit += route[i] * shareValues[i];
+        }
+        else if (route[i] < 0)
+        {
+            maxProfit += route[i] * shareValues[i] - R * route[i]; // maxRoute is negative
+        }
+    }
 
+    maxProfit = abs(maxProfit);
 
+    cout << "Finding profit for route: ";
+    for (int i = 0; i < route.size(); i++)
+    {
+        cout << route[i] << " ";
+    }
+    cout << endl;
+    cout << "Profit: " << maxProfit << endl;
 
-
-
+    return maxProfit;
 }

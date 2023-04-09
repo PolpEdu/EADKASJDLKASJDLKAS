@@ -940,6 +940,7 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
 
     for (int i = 0; i < N; ++i)
     {
+<<<<<<< HEAD
         // check if its possible to create a qrcode with the given transitions and blacks
         if (lt[i] == 0 && (lb[i] > 0 && lb[i] < N))
         {
@@ -971,6 +972,32 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
         }
         if (lb[i] == N / 2 && lb[i] * 2 < lt[i])
         {
+=======
+        //check if its possible to create a qrcode with the given transitions and blacks
+        if(lt[i] == 0 && (lb[i] > 0 && lb[i] < N)){
+            return true;
+        }
+        if(ct[i] == 0 && (cb[i] > 0 && cb[i] < N)){
+            return true;
+        }
+
+        if(N-1 < lt[i]){
+            return true;
+        }
+
+        if(lt[i] == N-1 && N/2 > lb[i]){
+            return true;
+        }
+
+        if(N-1 < ct[i]){
+            return true;
+        }
+
+        if(ct[i] == N-1 && N/2 > cb[i]){
+            return true;
+        }
+        if(lb[i] == N/2 && lb[i]*2 < lt[i]){
+>>>>>>> 8f9003bb218fb41f48c734b60dc5fcade419d8b3
             return true;
         }
 
@@ -978,6 +1005,7 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
         int sumRow = 0;
         int sumQuads = 0;
 
+<<<<<<< HEAD
         for (int i = 0; i < N; ++i)
         {
             sumCol += cb[i];
@@ -990,6 +1018,17 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
 
         if (sumCol != sumRow || sumCol != sumQuads)
         {
+=======
+        for(int i = 0; i < N; ++i){
+            sumCol += cb[i];
+            sumRow += lb[i];
+        }
+        for(int i = 0; i < 4; ++i){
+            sumQuads += qb[i];
+        }
+
+        if(sumCol != sumRow || sumCol != sumQuads){
+>>>>>>> 8f9003bb218fb41f48c734b60dc5fcade419d8b3
             return true;
         }
 
@@ -998,22 +1037,35 @@ bool defect_detection(int N, std::vector<int> lb, std::vector<int> cb, std::vect
         int leftCols = 0;
         int rightCols = 0;
 
+<<<<<<< HEAD
         for (int i = 0; i < N / 2; ++i)
         {
+=======
+        for(int i= 0; i < N/2; ++i){
+>>>>>>> 8f9003bb218fb41f48c734b60dc5fcade419d8b3
             upperRows += lb[i];
             leftCols += cb[i];
         }
 
+<<<<<<< HEAD
         for (int i = N / 2; i < N; ++i)
         {
+=======
+        for(int i = N/2; i < N; ++i){
+>>>>>>> 8f9003bb218fb41f48c734b60dc5fcade419d8b3
             lowerRows += lb[i];
             rightCols += cb[i];
         }
 
+<<<<<<< HEAD
         if (((qb[0] + qb[1]) != upperRows) || ((qb[2] + qb[3]) != lowerRows) || ((qb[1] + qb[2]) != leftCols) || ((qb[0] + qb[3]) != rightCols))
         {
+=======
+        if(((qb[0] + qb[1]) != upperRows) || ((qb[2] + qb[3]) != lowerRows) || ((qb[1] + qb[2]) != leftCols) || ((qb[0] + qb[3]) != rightCols)){
+>>>>>>> 8f9003bb218fb41f48c734b60dc5fcade419d8b3
             return true;
         }
+    
     }
     return false;
 }

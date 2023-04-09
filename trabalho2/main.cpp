@@ -74,7 +74,8 @@ For task 3, output one line for each company with two space-separated integers. 
 
 (a+b) mod  m = ((a mod  m)+(b mod  m)) mod  m
 */
-int bestProfit(vector<int> shareValues, int K, int R, int D);
+long int bestProfit(vector<int> shareValues, int K, int R, int D);
+void route(vector<int> shareValues, int K, int R, int D);
 
 int main()
 {
@@ -102,15 +103,16 @@ int main()
     {
     case 1:
         // first, we need to create a table with fixed cost R and cost, the difference between prices
-
-
-
         for (int i = 0; i < N; i++)
         {
             cout << bestProfit(shareValues[i], K, R, D) << endl;
         }
         break;
     case 2:
+        for (int i = 0; i < N; i++)
+        {
+            route(shareValues[i], K, R, D);
+        }
         break;
     case 3:
         break;
@@ -122,7 +124,7 @@ int main()
 }
 
 // create best profit function
-int bestProfit(vector<int> shareValues, int K, int R, int D)
+long int bestProfit(vector<int> shareValues, int K, int R, int D)
 {
     // i can buy less K shares in one transaction
     // i can perform at most one transaction per day 
@@ -130,5 +132,15 @@ int bestProfit(vector<int> shareValues, int K, int R, int D)
     
     // create a vector to store the best profit for each day
     vector<int> maxDelta(D, 0);
+
+}
+
+void route(vector<int> shareValues, int K, int R, int D) {
+    long int maxProfit = 0;
+
+
+
+
+
 
 }

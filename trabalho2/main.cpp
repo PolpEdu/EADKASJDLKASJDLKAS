@@ -10,12 +10,6 @@
 
 using namespace std;
 
-struct res
-{
-    vector<int> route;
-    long long int profit;
-};
-
 /*
 
 As a personal rule, John never wants to have more than K shares from a company.
@@ -80,14 +74,22 @@ For task 3, output one line for each company with two space-separated integers. 
 
 (a+b) mod  m = ((a mod  m)+(b mod  m)) mod  m
 */
-long long int travelThroughOptions(int day, bool selling, int company);
-struct res findRoutes(int D, int K, int R, vector<int> shareValues, long long int maxProfit, vector<int> bestRoute);
-void route(vector<int> shareValues, int K, int R, int D);
+
+struct res
+{
+    vector<int> route;
+    long long int profit;
+};
+
+long long int travelThroughOptions(int company);
+res route(int company);
 long long int calc_Profit(vector<int> route, vector<int> shareValues, int R);
 
 int N, D, K, R;
 vector<vector<long long int>> shareValues;
 vector<vector<long long int>> buysSells;
+
+
 
 int main()
 {
@@ -118,13 +120,23 @@ int main()
         // first, we need to create a table with fixed cost R and cost, the difference between prices
         for (int i = 0; i < N; i++)
         {
-            cout << travelThroughOptions(0, false, i) << endl;
+            cout << travelThroughOptions(i) << endl;
         }
         break;
     case 2:
         for (int i = 0; i < N; i++)
         {
-            // route(shareValues[i], K, R, D);
+            struct res r = route(i);
+            cout << r.profit << endl;
+            for (int j = 0; j < r.route.size(); j++)
+            {
+                if (j == r.route.size() - 1)
+                {
+                    cout << r.route[j] << endl;
+                    continue;
+                }
+                cout << r.route[j] << " ";
+            }
         }
         break;
     case 3:
@@ -136,36 +148,121 @@ int main()
     return 0;
 }
 
+void p_matrix(vector<vector<long long int>> v)
+{
+    for (int i = 0; i < v.size(); i++)
+    {
+        for (int j = 0; j < v[i].size(); j++)
+        {
+            cout << v[i][j] << " ";
+        }
+        cout << endl;
+    }
+}
+
+// modify the travelThroughOptions(int company) function to also save each action in a vector K, -K + R, 0
+res route(int company)
+{
+    // will keep track of buys and cells
+    vector<vector<long long int>> dailyProfit = vector<vector<long long int>>(D, vector<long long int>(2));
+    vector<vector<int>> transactions = vector<vector<int>>(D, vector<int>(2));
+    vector<int> bestRoute = vector<int>(D);
+
+    for (int i = 0; i < D; i++)
+    {
+        long long int currentShares = shareValues[company][i];
+        if (i == 0)
+        {
+            // can only buy
+            dailyProfit[i][1] -= (currentShares + R) * K;
+            transactions[i][1] = K;
+
+            /* cout << "i: " << i << endl;
+            for (int j = 0; j < dailyRoute[i].size(); j++)
+            {
+                cout << dailyRoute[i][j] << " ";
+            }
+            cout << endl; */
+            continue;
+        }
+        // (dailyProfit[i - 1][1] + (currentShares * K) is the sell option
+        if (dailyProfit[i - 1][0] > (dailyProfit[i - 1][1] + (currentShares * K)))
+        {
+            dailyProfit[i][0] = dailyProfit[i - 1][0];
+            transactions[i][0] = 0;
+        }
+        else
+        {
+            dailyProfit[i][0] = dailyProfit[i - 1][1] + (currentShares * K);
+            transactions[i][0] = -K;
+        }
+
+        // dailyProfit[i][1] = max(dailyProfit[i - 1][1], dailyProfit[i - 1][0] - (currentShares + R) * K); // buy
+        if (dailyProfit[i - 1][1] > (dailyProfit[i - 1][0] - (currentShares + R) * K))
+        {
+            dailyProfit[i][1] = dailyProfit[i - 1][1];
+            transactions[i][1] = 0;
+        }
+        else
+        {
+            dailyProfit[i][1] = dailyProfit[i - 1][0] - (currentShares + R) * K;
+            transactions[i][1] = K;
+        }
+    }
+    // find best route by starting at the end and going backwards until finding a 0
+    // when we do switch the buys and cells because that means profit.
+    int i = D - 1;
+    int j = 0;
+    while (i >= 0)
+    {
+        if (transactions[i][j] == 0)
+        {
+            i--;
+            continue;
+        }
+        bestRoute[i] = transactions[i][j];
+        if (j == 0)
+        {
+            j = 1;
+        }
+        else
+        {
+            j = 0;
+        }
+        i--;
+    }
+
+    struct res r;
+    r.profit = dailyProfit[D - 1][0];
+    r.route = bestRoute;
+    return r;
+}
+
 // generate tree with buys in the left branch and sells in the right branch. Recursively, we can find the best route
-long long int travelThroughOptions(int day, bool selling, int company) {
-    if (day == D) { return 0; }
+long long int travelThroughOptions(int company)
+{
+    // will keep track of buys and cells
+    vector<vector<long long int>> dailyProfit = vector<vector<long long int>>(D, vector<long long int>(2));
+    for (int i = 0; i < D; i++)
+    {
+        long long int currentShares = shareValues[company][i];
+        if (i == 0)
+        {
+            // can only buy
+            dailyProfit[i][1] -= (currentShares + R) * K;
 
-    /* if (buysSells[company][selling] > 0) {
-        return buysSells[company][selling];
-    } */
+            /* cout << "i: " << i << endl;
+            p_matrix(dailyProfit); */
+            continue;
+        }
+        dailyProfit[i][0] = max(dailyProfit[i - 1][0], dailyProfit[i - 1][1] + (currentShares * K));     // sell
+        dailyProfit[i][1] = max(dailyProfit[i - 1][1], dailyProfit[i - 1][0] - (currentShares + R) * K); // buy
 
-    // access current share value
-    long long int currentShareValue = shareValues[company][day];
-
-    long long int nothingProfit = travelThroughOptions(day + 1, selling, company);
-
-    long long int transactionProfit = 0;
-    
-    // on nothing day, we can only go to the next day
-    if (!selling) {
-        // buy the shares
-        transactionProfit = travelThroughOptions(day + 1, true, company) - (currentShareValue + R) * K ;
-        selling = true;
-    }
-    else {
-        transactionProfit = travelThroughOptions(day + 1, false, company) + currentShareValue * K;
-        selling = false;
+        /* cout << "i: " << i << endl;
+        p_matrix(dailyProfit); */
     }
 
-    cout << "currentShareValue: " << currentShareValue << " | profit: " << nothingProfit << " | transactionProfit: " << transactionProfit << " | total: " << max(nothingProfit, transactionProfit) << " | didsell: " << selling << endl;
-
-    long long int maxProfit = max(nothingProfit, transactionProfit);
-    return maxProfit;
+    return dailyProfit[D - 1][0];
 }
 
 // DYNAMIC PROGRAMMING GRAPH

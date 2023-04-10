@@ -13,7 +13,7 @@ using namespace std;
 struct res
 {
     vector<int> route;
-    long int profit;
+    long long int profit;
 };
 
 /*
@@ -80,10 +80,14 @@ For task 3, output one line for each company with two space-separated integers. 
 
 (a+b) mod  m = ((a mod  m)+(b mod  m)) mod  m
 */
-long int bestProfit(vector<int> shareValues, int K, int R, int D);
-struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxProfit,  vector<int> bestRoute);
+long long int travelThroughOptions(int day, bool selling, int company);
+struct res findRoutes(int D, int K, int R, vector<int> shareValues, long long int maxProfit, vector<int> bestRoute);
 void route(vector<int> shareValues, int K, int R, int D);
-long int calc_Profit(vector<int> route, vector<int> shareValues, int R);
+long long int calc_Profit(vector<int> route, vector<int> shareValues, int R);
+
+int N, D, K, R;
+vector<vector<long long int>> shareValues;
+vector<vector<long long int>> buysSells;
 
 int main()
 {
@@ -93,10 +97,11 @@ int main()
     int task;
     cin >> task;
 
-    int N, D, K, R;
     cin >> N >> D >> K >> R;
 
-    vector<vector<int>> shareValues(N, vector<int>(D));
+    // initialzie shareValues with (N, vector<int>(D));
+    shareValues.resize(N, vector<long long int>(D));
+    buysSells.resize(N, vector<long long int>(D));
 
     for (int i = 0; i < N; i++)
     {
@@ -113,13 +118,13 @@ int main()
         // first, we need to create a table with fixed cost R and cost, the difference between prices
         for (int i = 0; i < N; i++)
         {
-            cout << bestProfit(shareValues[i], K, R, D) << endl;
+            cout << travelThroughOptions(0, false, i) << endl;
         }
         break;
     case 2:
         for (int i = 0; i < N; i++)
         {
-            route(shareValues[i], K, R, D);
+            // route(shareValues[i], K, R, D);
         }
         break;
     case 3:
@@ -131,38 +136,40 @@ int main()
     return 0;
 }
 
-// create best profit function
-long int bestProfit(vector<int> shareValues, int K, int R, int D)
-{
-    // i can buy less K shares in one transaction
-    // i can perform at most one transaction per day
-    // the fee is R for every share bought, no fee when selling
+// generate tree with buys in the left branch and sells in the right branch. Recursively, we can find the best route
+long long int travelThroughOptions(int day, bool selling, int company) {
+    if (day == D) { return 0; }
 
-    // create a vector to store the best profit for each day
-    vector<int> maxDelta(D, 0);
+    /* if (buysSells[company][selling] > 0) {
+        return buysSells[company][selling];
+    } */
 
-    return 0;
-}
+    // access current share value
+    long long int currentShareValue = shareValues[company][day];
 
-// For the second task (100 points), for each company, you have to print the best profit and an optimal trading scheme, that is, print the information of how many shares to buy or sell each day to get the best profit.
-void route(vector<int> shareValues, int K, int R, int D)
-{
-    long int maxProfit = 0;
-    vector<int> bestRoute(D, 0);
+    long long int nothingProfit = travelThroughOptions(day + 1, selling, company);
 
-    // STARTING IN THE END OF THE MATRIX, select the route of values, going up and left that have the most |delta|
-    res r = findRoutes(D, K, R, shareValues, maxProfit, bestRoute);
-    cout << r.profit << endl;
-    for (int i = 0; i < r.route.size(); i++)
-    {
-        cout << r.route[i] << " ";
+    long long int transactionProfit = 0;
+    
+    // on nothing day, we can only go to the next day
+    if (!selling) {
+        // buy the shares
+        transactionProfit = travelThroughOptions(day + 1, true, company) - (currentShareValue + R) * K ;
+        selling = true;
+    }
+    else {
+        transactionProfit = travelThroughOptions(day + 1, false, company) + currentShareValue * K;
+        selling = false;
     }
 
-    cout << endl;
+    cout << "currentShareValue: " << currentShareValue << " | profit: " << nothingProfit << " | transactionProfit: " << transactionProfit << " | total: " << max(nothingProfit, transactionProfit) << " | didsell: " << selling << endl;
+
+    long long int maxProfit = max(nothingProfit, transactionProfit);
+    return maxProfit;
 }
 
 // DYNAMIC PROGRAMMING GRAPH
-struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxProfit,  vector<int> bestRoute)
+struct res findRoutes(int D, int K, int R, vector<int> shareValues, long long int maxProfit, vector<int> bestRoute)
 {
 
     /*
@@ -188,7 +195,6 @@ struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxP
         }
     }
 
-
     /*
         delta matrix
         0 -80 -60 100 70
@@ -207,9 +213,6 @@ struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxP
         for (int j = D - 1; j >= i; j--)
         {
             // we start at the end to find close gap trades. we dont want to start with a trade that could potentialy trades all the profits
-            
-
-
         }
     }
 
@@ -218,46 +221,4 @@ struct res findRoutes(int D, int K, int R, vector<int> shareValues,long int maxP
     r.route = bestRoute;
     r.profit = maxProfit;
     return r;
-}
-
-// debug func
-void p_matrix(vector<vector<int>> matrix)
-{
-    for (int i = 0; i < matrix.size(); i++)
-    {
-        for (int j = 0; j < matrix[i].size(); j++)
-        {
-            cout << matrix[i][j] << " ";
-        }
-        cout << endl;
-    }
-}
-
-long int calc_Profit(vector<int> route, vector<int> shareValues, int R)
-{
-    long int maxProfit = 0;
-
-    for (int i = 0; i < route.size(); i++)
-    {
-        if (route[i] > 0)
-        {
-            maxProfit += route[i] * shareValues[i];
-        }
-        else if (route[i] < 0)
-        {
-            maxProfit += route[i] * shareValues[i] - R * route[i]; // maxRoute is negative
-        }
-    }
-
-    maxProfit = abs(maxProfit);
-
-    cout << "Finding profit for route: ";
-    for (int i = 0; i < route.size(); i++)
-    {
-        cout << route[i] << " ";
-    }
-    cout << endl;
-    cout << "Profit: " << maxProfit << endl;
-
-    return maxProfit;
 }
